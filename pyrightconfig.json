@@ -1,0 +1,12 @@
+{
+    "include": [
+        "backend",
+        "agents",
+        "sample_data"
+    ],
+    "extraPaths": [
+        "backend"
+    ],
+    "pythonVersion": "3.9",
+    "pythonPlatform": "Darwin"
+}
