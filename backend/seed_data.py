@@ -2,6 +2,7 @@
 Seed sample data for testing the Financial Advisor Platform
 """
 
+import os
 from datetime import date, datetime, timedelta
 from database import get_db
 from models import (
@@ -16,13 +17,21 @@ def seed_sample_data():
     with get_db() as db:
         print("🌱 Seeding sample data...")
 
+        # SECURITY: Use environment variables for demo credentials
+        demo_email = os.getenv("DEMO_USER_EMAIL", "demo@example.com")
+        demo_password = os.getenv("DEMO_USER_PASSWORD", "demo123")
+
+        # Warn if using default credentials
+        if demo_password == "demo123":
+            print("⚠️  WARNING: Using default demo password. Set DEMO_USER_PASSWORD in .env for production.")
+
         # Create sample advisor (for authentication)
-        advisor = db.query(Advisor).filter(Advisor.email == "demo@example.com").first()
+        advisor = db.query(Advisor).filter(Advisor.email == demo_email).first()
         if not advisor:
             advisor = Advisor(
                 username="demo",
-                email="demo@example.com",
-                password_hash=get_password_hash("demo123"),
+                email=demo_email,
+                password_hash=get_password_hash(demo_password),
                 full_name="Demo Advisor",
                 is_active=True
             )
@@ -286,8 +295,8 @@ def seed_sample_data():
 
         print("\n✨ Sample data seeding complete!")
         print("\n📝 Login credentials:")
-        print(f"   Email: demo@example.com")
-        print(f"   Password: demo123")
+        print(f"   Email: {demo_email}")
+        print(f"   Password: [Set via DEMO_USER_PASSWORD env var]")
         print(f"\n📊 Summary:")
         print(f"   • {len(clients)} Clients")
         print(f"   • {len(policies)} Policies")

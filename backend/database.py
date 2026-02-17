@@ -2,35 +2,46 @@
 Database configuration and session management
 """
 
+import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
 from typing import Generator
 import os
+from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
+
+# Load environment variables from .env file
+load_dotenv()
 
 from models import Base
 
 # Database configuration
-# Using SQLite for development (no PostgreSQL setup required)
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./financial_advisor.db")
+# SECURITY: DATABASE_URL must be set in environment variables
+# No default value for security - fails fast if not configured
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# For production with PostgreSQL, set DATABASE_URL environment variable:
-# postgresql://advisor:advisor_pass@localhost:5432/financial_advisor
+if not DATABASE_URL:
+    raise ValueError(
+        "DATABASE_URL environment variable is required. "
+        "Example: postgresql://user:password@localhost:5432/dbname or sqlite:///./financial_advisor.db"
+    )
 
 # Create engine
-# SQLite for development
+# PostgreSQL (production)
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
+    pool_pre_ping=True,
     echo=False  # Set to True for SQL query logging
 )
 
-# For PostgreSQL (production)
+# For SQLite (development)
 # engine = create_engine(
 #     DATABASE_URL,
-#     pool_pre_ping=True,
+#     connect_args={"check_same_thread": False},
+#     poolclass=StaticPool,
 #     echo=False
 # )
 
@@ -43,9 +54,9 @@ def init_db():
     Initialize database - create all tables
     Run this once during setup
     """
-    print("Creating database tables...")
+    logger.info("Creating database tables...")
     Base.metadata.create_all(bind=engine)
-    print("Database initialization complete!")
+    logger.info("Database initialization complete!")
 
 
 def drop_db():
@@ -53,9 +64,9 @@ def drop_db():
     Drop all tables - USE WITH CAUTION!
     Only for development/testing
     """
-    print("WARNING: Dropping all database tables...")
+    logger.warning("Dropping all database tables...")
     Base.metadata.drop_all(bind=engine)
-    print("All tables dropped!")
+    logger.warning("All tables dropped!")
 
 
 @contextmanager
@@ -116,7 +127,7 @@ class DatabaseTransaction:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             self.db.rollback()
-            print(f"Transaction rolled back due to: {exc_val}")
+            logger.error(f"Transaction rolled back due to: {exc_val}")
             return False
         else:
             self.db.commit()
@@ -137,6 +148,6 @@ if __name__ == "__main__":
         if confirm.lower() == "yes":
             drop_db()
     else:
-        print("Usage:")
-        print("  python database.py init  - Create all tables")
-        print("  python database.py drop  - Drop all tables (requires confirmation)")
+        logger.info("Usage:")
+        logger.info("  python database.py init  - Create all tables")
+        logger.info("  python database.py drop  - Drop all tables (requires confirmation)")

@@ -3,12 +3,24 @@ Main FastAPI Application
 Financial Advisor Platform Backend
 """
 
+import logging
+import sys
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional, cast
 from datetime import datetime, date, timedelta
 import os
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 from database import get_db_session
 from models import Client, Policy, SIP, Meeting, ApprovalQueue, AuditLog, Advisor, SIPFrequency
@@ -52,13 +64,17 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS middleware
+# CORS middleware - SECURITY: Configure allowed origins via environment variable
+# CRITICAL: Never use ["*"] with allow_credentials=True in production
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000")
+allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual origins
+    allow_origins=allowed_origins,  # Whitelist specific origins only
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],  # Explicit methods
+    allow_headers=["Content-Type", "Authorization"],  # Explicit headers
 )
 
 # Mount static files (for frontend)
@@ -598,7 +614,7 @@ def _execute_approved_action(approval: ApprovalQueue, db: Session):
     action_type = approval.action_type
     data = approval.proposed_data
 
-    print(f"🚀 Executing {action_type} on {entity_type}: {data}")
+    logger.info(f"Executing {action_type} on {entity_type}")
 
     # Execute based on entity type
     if entity_type == "client":
@@ -611,7 +627,7 @@ def _execute_approved_action(approval: ApprovalQueue, db: Session):
             )
             db.add(client)
             db.flush()  # Get the ID
-            print(f"✅ Created client ID: {client.id}")
+            logger.info(f"Created client ID: {client.id}")
 
         elif action_type == AuditAction.UPDATE:
             client_id = data.get("id")
@@ -630,7 +646,7 @@ def _execute_approved_action(approval: ApprovalQueue, db: Session):
             if "address" in data:
                 client.address = data["address"]
 
-            print(f"✅ Updated client ID: {client.id}")
+            logger.info(f"Updated client ID: {client.id}")
 
     elif entity_type == "policy":
         if action_type == AuditAction.INSERT:
@@ -651,7 +667,7 @@ def _execute_approved_action(approval: ApprovalQueue, db: Session):
             )
             db.add(policy)
             db.flush()
-            print(f"✅ Created policy ID: {policy.id}")
+            logger.info(f"Created policy ID: {policy.id}")
 
         elif action_type == AuditAction.UPDATE:
             policy_id = data.get("id")
@@ -679,7 +695,7 @@ def _execute_approved_action(approval: ApprovalQueue, db: Session):
             if "status" in data:
                 policy.status = PolicyStatus(data["status"])
 
-            print(f"✅ Updated policy ID: {policy.id}")
+            logger.info(f"Updated policy ID: {policy.id}")
 
     elif entity_type == "sip":
         if action_type == AuditAction.INSERT:
@@ -700,7 +716,7 @@ def _execute_approved_action(approval: ApprovalQueue, db: Session):
             )
             db.add(sip)
             db.flush()
-            print(f"✅ Created SIP ID: {sip.id}")
+            logger.info(f"Created SIP ID: {sip.id}")
 
         elif action_type == AuditAction.UPDATE:
             sip_id = data.get("id")
@@ -730,7 +746,7 @@ def _execute_approved_action(approval: ApprovalQueue, db: Session):
             if "status" in data:
                 sip.status = SIPStatus(data["status"])
 
-            print(f"✅ Updated SIP ID: {sip.id}")
+            logger.info(f"Updated SIP ID: {sip.id}")
 
     # Commit changes
     db.commit()
@@ -754,9 +770,12 @@ def review_approval(
         try:
             _execute_approved_action(approval, db)
         except Exception as e:
+            # SECURITY: Log full error internally but return generic message to client
+            logger.error(f"Failed to execute approved action {approval_id}: {str(e)}", exc_info=True)
+            db.rollback()
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to execute approved action: {str(e)}"
+                detail="Failed to execute approved action. Please contact support."
             )
     else:
         approval.status = ApprovalStatus.REJECTED  # type: ignore[assignment]
@@ -811,26 +830,70 @@ async def upload_excel_file(
     file: UploadFile = File(...), db: Session = Depends(get_db_session)
 ):
     """Upload Excel file for ingestion"""
-    # Validate filename
+    import secrets
+    import re
+    from pathlib import Path
+
+    # SECURITY: Validate filename exists
     if not file.filename:
         raise HTTPException(status_code=400, detail="Filename is required")
 
-    # Save uploaded file
+    # SECURITY: Validate file extension (whitelist approach)
+    allowed_extensions = {'.xlsx', '.xls', '.csv'}
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}"
+        )
+
+    # SECURITY: Validate MIME type
+    allowed_mime_types = {
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel',
+        'text/csv',
+        'application/csv'
+    }
+    if file.content_type not in allowed_mime_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid content type: {file.content_type}"
+        )
+
+    # SECURITY: Sanitize filename to prevent directory traversal
+    safe_filename = re.sub(r'[^a-zA-Z0-9._-]', '_', Path(file.filename).name)
+    unique_filename = f"{secrets.token_hex(8)}_{safe_filename}"
+
+    # SECURITY: Read file with size limit (10MB)
+    max_size = 10 * 1024 * 1024  # 10MB
+    content = await file.read(max_size + 1)
+    if len(content) > max_size:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum size: {max_size / 1024 / 1024}MB"
+        )
+
+    # Save uploaded file with secure permissions
     upload_dir = "uploads"
-    os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, file.filename)
+    os.makedirs(upload_dir, mode=0o750, exist_ok=True)  # Restricted permissions
+    file_path = os.path.join(upload_dir, unique_filename)
 
+    # SECURITY: Write file with restricted permissions
     with open(file_path, "wb") as f:
-        content = await file.read()
         f.write(content)
+    os.chmod(file_path, 0o640)  # Owner read/write, group read only
 
-    # Process with agent
-    from agents.excel_ingestion_agent import ExcelIngestionAgent
+    try:
+        # Process with agent
+        from agents.excel_ingestion_agent import ExcelIngestionAgent
 
-    agent = ExcelIngestionAgent(db)
-    result = agent.process_file(file_path)
-
-    return result
+        agent = ExcelIngestionAgent(db)
+        result = agent.process_file(file_path)
+        return result
+    finally:
+        # SECURITY: Clean up uploaded file after processing
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 
 # ==================== Capital Companion (AI Insights) ====================
@@ -1176,10 +1239,10 @@ def _create_audit_log(
 @app.on_event("startup")
 async def startup_event():
     """Initialize on startup"""
-    print("🚀 Financial Advisor Platform starting...")
-    print("📊 Initializing database...")
+    logger.info("Financial Advisor Platform starting...")
+    logger.info("Initializing database...")
     # init_db()  # Uncomment if you want auto-init
-    print("✅ Platform ready!")
+    logger.info("Platform ready!")
 
 
 if __name__ == "__main__":

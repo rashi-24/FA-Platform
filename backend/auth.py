@@ -17,7 +17,14 @@ from database import get_db_session
 from models import Advisor
 
 # Security configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+# SECURITY: SECRET_KEY must be set in environment - no defaults for security-critical values
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError(
+        "SECRET_KEY environment variable is required. "
+        "Generate one with: python -c 'import secrets; print(secrets.token_hex(32))'"
+    )
+
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 

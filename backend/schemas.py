@@ -3,6 +3,7 @@ Pydantic schemas for request/response validation
 Ensures type safety and automatic API documentation
 """
 
+import re
 from pydantic import BaseModel, Field, validator, EmailStr
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
@@ -400,6 +401,33 @@ class AdvisorRegister(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=100)
     full_name: Optional[str] = Field(None, max_length=255)
+
+    @validator("password")
+    def validate_password_strength(cls, value):
+        """
+        SECURITY: Enforce password complexity requirements
+        - At least 8 characters
+        - At least one uppercase letter
+        - At least one lowercase letter
+        - At least one digit
+        - At least one special character
+        """
+        if len(value) < 8:
+            raise ValueError("Password must be at least 8 characters long")
+
+        if not re.search(r"[A-Z]", value):
+            raise ValueError("Password must contain at least one uppercase letter")
+
+        if not re.search(r"[a-z]", value):
+            raise ValueError("Password must contain at least one lowercase letter")
+
+        if not re.search(r"\d", value):
+            raise ValueError("Password must contain at least one digit")
+
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
+            raise ValueError("Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>)")
+
+        return value
 
 
 class AdvisorLogin(BaseModel):

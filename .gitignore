@@ -50,3 +50,24 @@ htmlcov/
 
 # Alembic
 alembic/versions/*.pyc
+
+# Docker
+.env.production
+docker-compose.override.yml
+
+# Security
+*.pem
+*.key
+*.crt
+*.pfx
+credentials.json
+secrets.json
+
+# Backups
+*.backup
+*.bak
+*.sql
+
+# Data
+data/
+chromadb/
