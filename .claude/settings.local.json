@@ -4,7 +4,18 @@
       "Bash(ls:*)",
       "Bash(curl:*)",
       "Bash(source:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(node:*)",
+      "Bash(npm --version)",
+      "Bash(npm install chart.js @fullcalendar/angular @fullcalendar/core @fullcalendar/daygrid @fullcalendar/timegrid @fullcalendar/interaction)",
+      "Bash(npm run build)",
+      "Bash(docker exec:*)",
+      "Bash(docker-compose:*)",
+      "Bash(./test_login.sh:*)",
+      "Bash(python3:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker restart:*)",
+      "Bash(ng generate:*)"
     ]
   }
 }

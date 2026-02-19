@@ -1,0 +1,29 @@
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="navbar-brand">
+      <div class="logo-container">
+        <img src="logo.png" alt="ARTHAVA" class="navbar-logo">
+        <div class="brand-name">ARTHAVA</div>
+      </div>
+    </div>
+    <div class="navbar-menu">
+      <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">Dashboard</a>
+      <a routerLink="/clients" routerLinkActive="active" class="nav-link">Clients</a>
+      <a routerLink="/policies" routerLinkActive="active" class="nav-link">Policies</a>
+      <a routerLink="/sips" routerLinkActive="active" class="nav-link">SIPs</a>
+      <a routerLink="/reminders" routerLinkActive="active" class="nav-link">Reminders</a>
+      <a routerLink="/approvals" routerLinkActive="active" class="nav-link">Approvals</a>
+      <a routerLink="/calendar" routerLinkActive="active" class="nav-link">Calendar</a>
+    </div>
+    <div class="navbar-user">
+      <div class="user-profile" *ngIf="currentUser">
+        <div class="user-avatar">👤</div>
+        <div class="user-details">
+          <div class="user-name">{{ currentUser.full_name || currentUser.username }}</div>
+          <div class="user-email">{{ currentUser.email }}</div>
+        </div>
+      </div>
+      <button class="logout-btn" (click)="logout()">Logout</button>
+    </div>
+  </div>
+</nav>

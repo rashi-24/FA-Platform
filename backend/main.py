@@ -161,7 +161,7 @@ def login_advisor(login_data: AdvisorLogin, db: Session = Depends(get_db_session
     db.commit()
 
     # Create access token
-    access_token = create_access_token(data={"sub": advisor.id})
+    access_token = create_access_token(data={"sub": str(advisor.id)})
 
     return {
         "access_token": access_token,
@@ -175,7 +175,7 @@ def refresh_token(current_user: Advisor = Depends(get_current_user)):
     """
     Refresh access token (requires valid existing token)
     """
-    access_token = create_access_token(data={"sub": current_user.id})
+    access_token = create_access_token(data={"sub": str(current_user.id)})
 
     return {
         "access_token": access_token,

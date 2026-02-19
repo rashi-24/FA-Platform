@@ -116,12 +116,22 @@ def get_current_user(
     token = credentials.credentials
     payload = decode_access_token(token)
 
-    # Extract user ID from token
-    user_id: int = payload.get("sub")
-    if user_id is None:
+    # Extract user ID from token (should be a string)
+    user_id_str: str = payload.get("sub")
+    if user_id_str is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Convert to integer for database query
+    try:
+        user_id: int = int(user_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID in token",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

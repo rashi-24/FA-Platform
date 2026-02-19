@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.angular
+.vscode
+*.md
+.env
+.env.*
+coverage
+.github
+npm-debug.log
+yarn-error.log
+.DS_Store

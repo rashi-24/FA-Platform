@@ -1,0 +1,132 @@
+<app-navbar></app-navbar>
+
+<div class="container">
+  <div class="card calendar-container">
+    <div class="section-header">
+      <div>
+        <h2>Calendar & Meetings</h2>
+        <p class="subtitle">Manage your meeting schedule</p>
+      </div>
+      <button class="btn btn-primary" (click)="openNewMeetingModal()">
+        + New Meeting
+      </button>
+    </div>
+
+    <div *ngIf="!loading" class="calendar-wrapper">
+      <full-calendar #calendar [options]="calendarOptions"></full-calendar>
+    </div>
+
+    <div *ngIf="loading" class="loading">
+      Loading calendar...
+    </div>
+  </div>
+</div>
+
+<!-- Meeting Modal -->
+<div class="modal" *ngIf="showMeetingModal" (click)="closeMeetingModal()">
+  <div class="modal-content modal-large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>{{ isEditMode ? 'Edit Meeting' : 'New Meeting' }}</h3>
+      <button class="close-btn" (click)="closeMeetingModal()">&times;</button>
+    </div>
+
+    <form (ngSubmit)="saveMeeting()" #meetingFormEl="ngForm">
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label for="client">Client <span class="required">*</span></label>
+          <select
+            id="client"
+            [(ngModel)]="meetingForm.client_id"
+            name="client"
+            required
+            (change)="onClientChange()"
+          >
+            <option [value]="null">Select a client</option>
+            <option *ngFor="let client of clients" [value]="client.id">
+              {{ client.name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="meeting_date">Date <span class="required">*</span></label>
+          <input
+            type="date"
+            id="meeting_date"
+            [(ngModel)]="meetingForm.meeting_date"
+            name="meeting_date"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="duration">Duration (minutes) <span class="required">*</span></label>
+          <input
+            type="number"
+            id="duration"
+            [(ngModel)]="meetingForm.duration"
+            name="duration"
+            required
+            min="15"
+            step="15"
+          />
+        </div>
+
+        <div class="form-group full-width">
+          <label for="meeting_type">Type <span class="required">*</span></label>
+          <select
+            id="meeting_type"
+            [(ngModel)]="meetingForm.meeting_type"
+            name="meeting_type"
+            required
+          >
+            <option value="In-Person">In-Person</option>
+            <option value="Video Call">Video Call</option>
+            <option value="Phone Call">Phone Call</option>
+          </select>
+        </div>
+
+        <div class="form-group full-width">
+          <label for="location">Location</label>
+          <input
+            type="text"
+            id="location"
+            [(ngModel)]="meetingForm.location"
+            name="location"
+            placeholder="Enter meeting location or link"
+          />
+        </div>
+
+        <div class="form-group full-width">
+          <label for="notes">Notes</label>
+          <textarea
+            id="notes"
+            [(ngModel)]="meetingForm.notes"
+            name="notes"
+            rows="4"
+            placeholder="Any additional notes or agenda items"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button
+          type="button"
+          class="btn btn-danger"
+          *ngIf="isEditMode"
+          (click)="deleteMeeting()"
+        >
+          Delete Meeting
+        </button>
+        <div class="action-buttons-right">
+          <button type="button" class="btn btn-secondary" (click)="closeMeetingModal()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="!meetingFormEl.valid">
+            {{ isEditMode ? 'Update' : 'Create' }} Meeting
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>

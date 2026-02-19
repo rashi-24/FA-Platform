@@ -1,0 +1,58 @@
+<div class="login-container">
+  <div class="logo-section">
+    <img src="logo.png" alt="ARTHAVA">
+  </div>
+
+  <div class="form-card">
+    <h2 class="welcome-text">Welcome Back</h2>
+
+    <div *ngIf="errorMessage" class="error-message">
+      {{ errorMessage }}
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <span class="input-icon icon-email"></span>
+        <input
+          type="email"
+          id="email"
+          formControlName="email"
+          placeholder="Email"
+          [class.invalid]="email?.invalid && email?.touched"
+        />
+        <div *ngIf="email?.invalid && email?.touched" class="validation-error">
+          <span *ngIf="email?.errors?.['required']">Email is required</span>
+          <span *ngIf="email?.errors?.['email']">Please enter a valid email</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="password-wrapper">
+          <span class="input-icon icon-password"></span>
+          <input
+            type="password"
+            id="password"
+            formControlName="password"
+            placeholder="Password"
+            [class.invalid]="password?.invalid && password?.touched"
+          />
+        </div>
+        <div *ngIf="password?.invalid && password?.touched" class="validation-error">
+          <span *ngIf="password?.errors?.['required']">Password is required</span>
+          <span *ngIf="password?.errors?.['minlength']">Password must be at least 8 characters</span>
+        </div>
+        <div class="forgot-password">
+          <a href="#" (click)="$event.preventDefault()">Forgot password?</a>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-login" [disabled]="loading || loginForm.invalid">
+        {{ loading ? 'Signing in...' : 'Sign In' }}
+      </button>
+    </form>
+
+    <div class="register-link">
+      New user? <a routerLink="/auth/register">Create an account</a>
+    </div>
+  </div>
+</div>

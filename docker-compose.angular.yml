@@ -1,0 +1,141 @@
+# ============================================================================
+# FA-Platform Docker Compose Configuration (Angular Frontend)
+# Complete stack: Backend API + PostgreSQL + Angular Frontend
+# ============================================================================
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # PostgreSQL Database
+  # ==========================================================================
+  db:
+    image: postgres:16-alpine
+    container_name: fa-platform-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-financial_advisor}
+      POSTGRES_USER: ${POSTGRES_USER:-fa_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_this_password_in_production}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fa_user} -d ${POSTGRES_DB:-financial_advisor}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - fa-network
+
+  # ==========================================================================
+  # Backend API (FastAPI)
+  # ==========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fa-platform-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fa_user}:${POSTGRES_PASSWORD:-change_this_password_in_production}@db:5432/${POSTGRES_DB:-financial_advisor}
+
+      # Security
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+
+      # CORS
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8000}
+
+      # API Config
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      DEBUG: ${DEBUG:-False}
+
+      # Demo User
+      DEMO_USER_EMAIL: ${DEMO_USER_EMAIL:-demo@example.com}
+      DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-Demo@Pass123!}
+
+      # Seed data on first run
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+
+      # LLM (optional)
+      HUGGINGFACE_API_KEY: ${HUGGINGFACE_API_KEY:-}
+      HF_MODEL: ${HF_MODEL:-meta-llama/Llama-3.2-3B-Instruct}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+      CHROMA_PERSIST_DIR: ${CHROMA_PERSIST_DIR:-./data/chromadb}
+
+      # Email (optional)
+      EMAIL_ADDRESS: ${EMAIL_ADDRESS:-}
+      EMAIL_APP_PASSWORD: ${EMAIL_APP_PASSWORD:-}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Financial Advisor}
+
+      # Scheduler (optional)
+      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-False}
+      REMINDER_AGENT_HOUR: ${REMINDER_AGENT_HOUR:-9}
+      REMINDER_AGENT_MINUTE: ${REMINDER_AGENT_MINUTE:-0}
+    volumes:
+      - uploads_data:/app/uploads
+      - chroma_data:/app/data/chromadb
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - fa-network
+
+  # ==========================================================================
+  # Frontend (Angular with Nginx)
+  # ==========================================================================
+  frontend:
+    build:
+      context: ./frontend-angular
+      dockerfile: Dockerfile
+    container_name: fa-platform-frontend-angular
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - fa-network
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  fa-network:
+    driver: bridge
+    name: fa-platform-network
+
+# ==============================================================================
+# Volumes (Persistent Data)
+# ==============================================================================
+volumes:
+  postgres_data:
+    name: fa-platform-postgres-data
+    driver: local
+  uploads_data:
+    name: fa-platform-uploads
+    driver: local
+  chroma_data:
+    name: fa-platform-chromadb
+    driver: local

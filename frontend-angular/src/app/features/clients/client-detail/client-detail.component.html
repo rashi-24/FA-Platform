@@ -1,0 +1,186 @@
+<app-navbar></app-navbar>
+
+<div class="container">
+  <div *ngIf="!loading && client">
+    <!-- Client Header -->
+    <div class="client-header card">
+      <div class="client-info">
+        <h1>{{ client.name }}</h1>
+        <div class="client-details">
+          <p><strong>Phone:</strong> {{ client.phone }}</p>
+          <p *ngIf="client.email"><strong>Email:</strong> {{ client.email }}</p>
+          <p *ngIf="client.address"><strong>Address:</strong> {{ client.address }}</p>
+          <p><strong>Last Contact:</strong> {{ formatDate(client.last_contact_date || '') }}</p>
+        </div>
+      </div>
+      <div class="client-stats">
+        <div class="stat-item">
+          <span class="stat-value">{{ calculateSummaryStats().policies }}</span>
+          <span class="stat-label">Active Policies</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ calculateSummaryStats().sips }}</span>
+          <span class="stat-label">Active SIPs</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ formatCurrency(calculateSummaryStats().premium) }}</span>
+          <span class="stat-label">Annual Premium</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ formatCurrency(calculateSummaryStats().sipAmount) }}</span>
+          <span class="stat-label">Monthly SIP</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-section">
+      <div class="section-header">
+        <h2>Portfolio Visualization</h2>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card card">
+          <canvas #policyChart></canvas>
+        </div>
+        <div class="chart-card card">
+          <canvas #sipChart></canvas>
+        </div>
+        <div class="chart-card card">
+          <canvas #premiumChart></canvas>
+        </div>
+        <div class="chart-card card">
+          <canvas #sipAmountChart></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Portfolio Analysis -->
+    <div class="ai-analysis-section" *ngIf="!aiLoading && aiAnalysis">
+      <div class="card">
+        <div class="section-header">
+          <h2>AI Portfolio Analysis</h2>
+          <span class="analysis-score" [ngClass]="'score-' + getScoreLevel(aiAnalysis.portfolio_score)">
+            Score: {{ aiAnalysis.portfolio_score }}/100
+          </span>
+        </div>
+
+        <div class="analysis-content">
+          <div class="analysis-item">
+            <h4>Summary</h4>
+            <p>{{ aiAnalysis.summary }}</p>
+          </div>
+
+          <div class="analysis-item">
+            <h4>Strengths</h4>
+            <ul>
+              <li *ngFor="let strength of aiAnalysis.strengths">{{ strength }}</li>
+            </ul>
+          </div>
+
+          <div class="analysis-item">
+            <h4>Recommendations</h4>
+            <ul>
+              <li *ngFor="let rec of aiAnalysis.recommendations">{{ rec }}</li>
+            </ul>
+          </div>
+
+          <div class="analysis-item" *ngIf="aiAnalysis.concerns && aiAnalysis.concerns.length > 0">
+            <h4>Concerns</h4>
+            <ul>
+              <li *ngFor="let concern of aiAnalysis.concerns">{{ concern }}</li>
+            </ul>
+          </div>
+
+          <div class="risk-metrics">
+            <div class="risk-item">
+              <span class="risk-label">Risk Level:</span>
+              <span class="badge" [ngClass]="'badge-' + getRiskClass(aiAnalysis.risk_level)">
+                {{ aiAnalysis.risk_level }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Policies Section -->
+    <div class="data-section card">
+      <div class="section-header">
+        <h2>Policies ({{ client.policies.length }})</h2>
+      </div>
+      <table class="data-table" *ngIf="client.policies.length > 0">
+        <thead>
+          <tr>
+            <th>Policy Number</th>
+            <th>Provider</th>
+            <th>Type</th>
+            <th>Premium</th>
+            <th>Frequency</th>
+            <th>Renewal Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let policy of client.policies">
+            <td><strong>{{ policy.policy_number }}</strong></td>
+            <td>{{ policy.provider }}</td>
+            <td>{{ policy.policy_type }}</td>
+            <td>{{ formatCurrency(policy.premium_amount) }}</td>
+            <td>{{ policy.payment_frequency }}</td>
+            <td>{{ formatDate(policy.renewal_date) }}</td>
+            <td>
+              <span class="badge" [ngClass]="'badge-' + getStatusClass(policy.status)">
+                {{ policy.status }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div *ngIf="client.policies.length === 0" class="empty-state">
+        <p>No policies found for this client</p>
+      </div>
+    </div>
+
+    <!-- SIPs Section -->
+    <div class="data-section card">
+      <div class="section-header">
+        <h2>SIPs ({{ client.sips.length }})</h2>
+      </div>
+      <table class="data-table" *ngIf="client.sips.length > 0">
+        <thead>
+          <tr>
+            <th>Folio Number</th>
+            <th>Fund Name</th>
+            <th>Amount</th>
+            <th>Frequency</th>
+            <th>SIP Day</th>
+            <th>Start Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let sip of client.sips">
+            <td><strong>{{ sip.folio_number }}</strong></td>
+            <td>{{ sip.fund_name }}</td>
+            <td>{{ formatCurrency(sip.sip_amount) }}</td>
+            <td>{{ sip.sip_frequency }}</td>
+            <td>{{ sip.sip_day }}</td>
+            <td>{{ formatDate(sip.start_date) }}</td>
+            <td>
+              <span class="badge" [ngClass]="'badge-' + getStatusClass(sip.status)">
+                {{ sip.status }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div *ngIf="client.sips.length === 0" class="empty-state">
+        <p>No SIPs found for this client</p>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    Loading client details...
+  </div>
+</div>

@@ -1,0 +1,130 @@
+<app-navbar></app-navbar>
+
+<div class="container">
+  <!-- Dashboard Summary Stats -->
+  <section class="dashboard-stats">
+    <h2 class="section-title">Dashboard Summary</h2>
+    <div class="stats-grid">
+      <app-stat-card
+        [value]="stats?.total_clients || 0"
+        label="Total Clients"
+        [loading]="loading.stats"
+      ></app-stat-card>
+      <app-stat-card
+        [value]="stats?.total_policies || 0"
+        label="Total Policies"
+        [loading]="loading.stats"
+      ></app-stat-card>
+      <app-stat-card
+        [value]="stats?.total_sips || 0"
+        label="Active SIPs"
+        [loading]="loading.stats"
+      ></app-stat-card>
+      <app-stat-card
+        [value]="formatCurrency(stats?.total_aum || 0)"
+        label="Total AUM"
+        [loading]="loading.stats"
+      ></app-stat-card>
+      <app-stat-card
+        [value]="stats?.upcoming_renewals || 0"
+        label="Renewals (30d)"
+        variant="alert"
+        [loading]="loading.stats"
+      ></app-stat-card>
+      <app-stat-card
+        [value]="stats?.upcoming_sips || 0"
+        label="SIPs This Month"
+        variant="alert"
+        [loading]="loading.stats"
+      ></app-stat-card>
+      <app-stat-card
+        [value]="stats?.pending_approvals || 0"
+        label="Pending Approvals"
+        variant="warning"
+        [loading]="loading.stats"
+      ></app-stat-card>
+      <app-stat-card
+        [value]="stats?.recent_meetings || 0"
+        label="Recent Meetings"
+        [loading]="loading.stats"
+      ></app-stat-card>
+    </div>
+  </section>
+
+  <!-- Capital Companion AI Insights -->
+  <section class="card capital-companion" *ngIf="insights.length > 0">
+    <div class="section-header">
+      <h2>🤝 Capital Companion - Your AI Assistant</h2>
+      <p class="subtitle">Get daily insights and financial guidance</p>
+    </div>
+    <div class="insights-grid">
+      <div
+        *ngFor="let insight of insights"
+        class="insight-card"
+        [ngClass]="getPriorityClass(insight.priority)"
+      >
+        <div class="insight-icon">{{ insight.icon }}</div>
+        <div class="insight-content">
+          <h4>{{ insight.title }}</h4>
+          <p>{{ insight.message }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Access Widgets -->
+  <div class="widgets-grid">
+    <!-- Urgent Reminders Widget -->
+    <section class="card widget">
+      <div class="section-header">
+        <h3>⚠️ Urgent Reminders</h3>
+      </div>
+      <div class="widget-list" *ngIf="!loading.reminders">
+        <div
+          *ngFor="let reminder of urgentReminders"
+          class="widget-item"
+        >
+          <div class="widget-item-content">
+            <strong>{{ reminder.reminder_type }}</strong>
+            <p>{{ reminder.message }}</p>
+            <span class="text-muted">Due: {{ formatDate(reminder.due_date) }}</span>
+          </div>
+          <div class="widget-item-actions">
+            <span class="badge" [class]="getUrgencyClass(reminder.urgency)">
+              {{ reminder.urgency }}
+            </span>
+            <button class="btn-icon" (click)="dismissReminder(reminder.id)" title="Dismiss">✕</button>
+          </div>
+        </div>
+        <div *ngIf="urgentReminders.length === 0" class="empty-state">
+          No urgent reminders
+        </div>
+      </div>
+      <div *ngIf="loading.reminders" class="loading">Loading...</div>
+    </section>
+
+    <!-- Upcoming Meetings Widget -->
+    <section class="card widget">
+      <div class="section-header">
+        <h3>📅 Upcoming Meetings</h3>
+        <a routerLink="/calendar">View Calendar</a>
+      </div>
+      <div class="widget-list" *ngIf="!loading.meetings">
+        <div
+          *ngFor="let meeting of upcomingMeetings"
+          class="widget-item"
+        >
+          <div class="widget-item-content">
+            <strong>{{ meeting.client_name }}</strong>
+            <p>{{ meeting.meeting_type }}</p>
+            <span class="text-muted">{{ formatDate(meeting.meeting_date) }}</span>
+          </div>
+        </div>
+        <div *ngIf="upcomingMeetings.length === 0" class="empty-state">
+          No upcoming meetings
+        </div>
+      </div>
+      <div *ngIf="loading.meetings" class="loading">Loading...</div>
+    </section>
+  </div>
+

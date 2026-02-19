@@ -1,0 +1,4 @@
+<div class="stat-card" [class.alert]="variant === 'alert'" [class.warning]="variant === 'warning'" [class.loading]="loading">
+  <h3>{{ loading ? '...' : value }}</h3>
+  <p>{{ label }}</p>
+</div>
